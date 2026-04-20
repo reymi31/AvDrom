@@ -1,0 +1,155 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #eef2f7;
+}
+
+/* ===== Шапка ===== */
+header {
+    background: #1e1e2f;
+    color: white;
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 {
+    margin: 0;
+}
+
+header a {
+    color: #ccc;
+    text-decoration: none;
+    margin-left: 20px;
+    transition: 0.3s;
+}
+
+header a:hover {
+    color: white;
+}
+
+/* ===== Главный блок ===== */
+.hero {
+    text-align: center;
+    padding: 80px 20px;
+    background: linear-gradient(135deg, #4e73df, #224abe);
+    color: white;
+}
+
+.hero h2 {
+    font-size: 32px;
+    margin-bottom: 10px;
+}
+
+.hero button {
+    margin-top: 20px;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 25px;
+    background: white;
+    color: #224abe;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.hero button:hover {
+    transform: scale(1.05);
+}
+
+/* ===== Блок автомобилей ===== */
+.cars {
+    padding: 60px 40px;
+    text-align: center;
+}
+
+.cars h2 {
+    margin-bottom: 40px;
+}
+
+/* Используем Flexbox */
+.cars {
+    display: flex;
+    justify-content: center; 
+    gap: 20px;              
+    flex-wrap: wrap;  
+}
+
+.cars-container {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.car-card {
+    background: white;
+    width: 260px;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    transition: 0.3s;
+}
+
+.car-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+
+.car-card img {
+    width: 100%;
+    border-radius: 10px;
+}
+
+.car-card h3 {
+    margin: 15px 0 5px;
+}
+
+.car-card p {
+    color: #666;
+    font-size: 14px;
+}
+
+.car-card button {
+    margin-top: 15px;
+    padding: 10px;
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    background: #4e73df;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.car-card button:hover {
+    background: #224abe;
+}
+
+/* ===== Футер ===== */
+footer {
+    background: #1e1e2f;
+    color: #aaa;
+    text-align: center;
+    padding: 20px;
+    margin-top: 50px;
+}
+
+.about {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.about h2 {
+    margin-bottom: 20px;
+}
+
+.about p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+    color: #555;
+}

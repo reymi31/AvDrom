@@ -1,0 +1,82 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #4e73df, #224abe);
+}
+
+/* Контейнер */
+.register-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Форма */
+.register-form {
+    background: white;
+    padding: 40px;
+    width: 320px;
+    border-radius: 15px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+/* Заголовок */
+.register-form h2 {
+    margin-bottom: 25px;
+}
+
+/* Поля ввода */
+.register-form input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    outline: none;
+    transition: 0.3s;
+    font-size: 14px;
+}
+
+.register-form input:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 5px rgba(78,115,223,0.3);
+}
+
+/* Кнопка */
+.register-form button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: #4e73df;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.register-form button:hover {
+    background: #224abe;
+    transform: scale(1.03);
+}
+
+/* Текст под кнопкой */
+.register-form p {
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+.register-form a {
+    color: #4e73df;
+    text-decoration: none;
+}
+
+.register-form a:hover {
+    text-decoration: underline;
+}
