@@ -1,10 +1,12 @@
 body {
     margin: 0;
     font-family: 'Segoe UI', Arial, sans-serif;
-    background: #eef2f7;
+    background:
+        radial-gradient(circle at top, rgba(78, 115, 223, 0.12), transparent 30%),
+        linear-gradient(180deg, #f6f8fc 0%, #e9eef8 100%);
+    color: #1f2940;
 }
 
-/* ===== Шапка ===== */
 header {
     background: #1e1e2f;
     color: white;
@@ -12,29 +14,48 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 12px 30px rgba(18, 24, 38, 0.18);
 }
 
 header h1 {
     margin: 0;
+    letter-spacing: 0.04em;
 }
 
 header a {
-    color: #ccc;
+    color: #cfd7ee;
     text-decoration: none;
     margin-left: 20px;
-    transition: 0.3s;
+    transition: color 0.3s ease, opacity 0.3s ease;
 }
 
 header a:hover {
     color: white;
 }
 
-/* ===== Главный блок ===== */
 .hero {
     text-align: center;
-    padding: 80px 20px;
+    padding: 88px 20px;
     background: linear-gradient(135deg, #4e73df, #224abe);
     color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -10% -55% auto;
+    width: 320px;
+    height: 320px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+}
+
+.hero h2,
+.hero p {
+    position: relative;
+    z-index: 1;
 }
 
 .hero h2 {
@@ -42,96 +63,149 @@ header a:hover {
     margin-bottom: 10px;
 }
 
-.hero button {
-    margin-top: 20px;
-    padding: 12px 25px;
+.hero button,
+.primary-button,
+.secondary-button,
+.compact-button,
+.danger-button,
+.favorite-button,
+.car-card button {
     border: none;
-    border-radius: 25px;
-    background: white;
-    color: #224abe;
-    font-weight: bold;
     cursor: pointer;
-    transition: 0.3s;
+    font-weight: 700;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
-.hero button:hover {
-    transform: scale(1.05);
+.hero button,
+.primary-button,
+.compact-button {
+    margin-top: 20px;
+    padding: 13px 26px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ffffff, #e8eeff);
+    color: #224abe;
+    box-shadow: 0 14px 30px rgba(20, 46, 122, 0.22);
 }
 
-/* ===== Блок автомобилей ===== */
+.hero button:hover,
+.primary-button:hover,
+.compact-button:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 18px 34px rgba(20, 46, 122, 0.28);
+}
+
+.secondary-button {
+    padding: 11px 20px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #2c3148, #1e1e2f);
+    color: white;
+    box-shadow: 0 12px 24px rgba(30, 30, 47, 0.22);
+}
+
+.secondary-button:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #3b4261, #26263c);
+}
+
+.danger-button {
+    padding: 11px 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ff6a6a, #d53b3b);
+    color: white;
+    box-shadow: 0 12px 24px rgba(213, 59, 59, 0.2);
+}
+
+.danger-button:hover {
+    transform: translateY(-2px);
+}
+
+.favorite-button {
+    padding: 11px 16px;
+    border-radius: 12px;
+    background: #eef2ff;
+    color: #3157cb;
+    box-shadow: inset 0 0 0 1px rgba(49, 87, 203, 0.12);
+}
+
+.favorite-button.active {
+    background: linear-gradient(135deg, #ffd66b, #ffb13c);
+    color: #5b3600;
+    box-shadow: 0 12px 24px rgba(255, 177, 60, 0.22);
+}
+
 .cars {
     padding: 60px 40px;
-    text-align: center;
-}
-
-.cars h2 {
-    margin-bottom: 40px;
-}
-
-/* Используем Flexbox */
-.cars {
     display: flex;
-    justify-content: center; 
-    gap: 20px;              
-    flex-wrap: wrap;  
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.home-layout {
+    max-width: 1120px;
+    margin: -34px auto 0;
+    padding: 0 20px 40px;
+    position: relative;
+    z-index: 2;
+}
+
+.home-filters-panel {
+    margin-bottom: 24px;
+}
+
+.home-cars-section {
+    padding: 0;
 }
 
 .cars-container {
-    display: flex;
-    gap: 30px;
-    flex-wrap: wrap;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 24px;
 }
 
 .car-card {
-    background: white;
+    background: rgba(255, 255, 255, 0.92);
     width: 260px;
     padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
-    transition: 0.3s;
+    border-radius: 20px;
+    box-shadow: 0 18px 40px rgba(43, 60, 113, 0.12);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid rgba(78, 115, 223, 0.1);
+}
+
+.cars-container .car-card {
+    width: auto;
 }
 
 .car-card:hover {
     transform: translateY(-8px);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    box-shadow: 0 22px 44px rgba(43, 60, 113, 0.16);
 }
 
-.car-card img {
+.car-card img,
+.image-preview img {
     width: 100%;
-    border-radius: 10px;
+    border-radius: 14px;
+    object-fit: cover;
 }
 
 .car-card h3 {
-    margin: 15px 0 5px;
+    margin: 15px 0 8px;
 }
 
 .car-card p {
-    color: #666;
+    color: #5e6783;
     font-size: 14px;
+    line-height: 1.6;
 }
 
 .car-card button {
     margin-top: 15px;
-    padding: 10px;
-    width: 100%;
-    border: none;
-    border-radius: 8px;
-    background: #4e73df;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.3s;
 }
 
-.car-card button:hover {
-    background: #224abe;
-}
-
-/* ===== Футер ===== */
 footer {
     background: #1e1e2f;
-    color: #aaa;
+    color: #c2cae3;
     text-align: center;
     padding: 20px;
     margin-top: 50px;
@@ -152,4 +226,298 @@ footer {
     margin-bottom: 15px;
     line-height: 1.6;
     color: #555;
+}
+
+.profile-hero {
+    padding: 72px 20px 64px;
+}
+
+.profile-layout {
+    max-width: 1120px;
+    margin: -34px auto 0;
+    padding: 0 20px 40px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(280px, 1fr));
+    gap: 24px;
+    position: relative;
+    z-index: 2;
+}
+
+.profile-panel {
+    background: rgba(255, 255, 255, 0.94);
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 20px 45px rgba(36, 49, 94, 0.12);
+    border: 1px solid rgba(78, 115, 223, 0.1);
+}
+
+.profile-panel h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+.profile-panel-wide {
+    grid-column: 1 / -1;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.panel-subtitle {
+    margin: 6px 0 0;
+    color: #6c7898;
+}
+
+.profile-data {
+    display: grid;
+    gap: 14px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: #f5f7fe;
+    color: #394666;
+}
+
+.info-row span {
+    color: #7180a6;
+}
+
+.profile-form,
+.filters-grid {
+    display: grid;
+    gap: 14px;
+}
+
+.profile-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.profile-form input,
+.profile-form textarea,
+.filters-grid input,
+.admin-user-actions select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px 16px;
+    border: 1px solid #d9e1f4;
+    border-radius: 14px;
+    background: #f9fbff;
+    font-size: 14px;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.profile-form textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.profile-form input:focus,
+.profile-form textarea:focus,
+.filters-grid input:focus,
+.admin-user-actions select:focus {
+    outline: none;
+    border-color: #4e73df;
+    box-shadow: 0 0 0 4px rgba(78, 115, 223, 0.14);
+}
+
+.upload-field {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px dashed #bfd0ff;
+    background: #f7f9ff;
+    color: #43527b;
+}
+
+.upload-field span {
+    font-weight: 600;
+}
+
+.image-preview {
+    max-width: 260px;
+}
+
+.hidden {
+    display: none;
+}
+
+.tabs-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.tab-button {
+    padding: 11px 18px;
+    border: 1px solid #d3ddf8;
+    border-radius: 999px;
+    background: #f6f8ff;
+    color: #3f4f79;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.tab-button.active {
+    background: linear-gradient(135deg, #4e73df, #224abe);
+    color: white;
+    box-shadow: 0 12px 24px rgba(78, 115, 223, 0.2);
+    border-color: transparent;
+}
+
+.filters-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: end;
+    margin-bottom: 24px;
+}
+
+.compact-button {
+    margin-top: 0;
+    width: 100%;
+}
+
+.card-badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #edf2ff;
+    color: #3157cb;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+}
+
+.card-meta {
+    margin-top: 16px;
+    color: #7280a2;
+    font-size: 13px;
+}
+
+.card-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.listing-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.price-line {
+    font-size: 22px;
+    font-weight: 800;
+    color: #1f2940;
+    margin-bottom: 6px;
+}
+
+.image-placeholder {
+    height: 180px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #eef2ff, #dde6ff);
+    color: #65739b;
+    font-weight: 600;
+}
+
+.empty-state {
+    margin: 0;
+    padding: 22px;
+    border-radius: 18px;
+    text-align: center;
+    background: #f5f7fe;
+    color: #64739a;
+}
+
+.admin-users-list {
+    display: grid;
+    gap: 16px;
+}
+
+.admin-user-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 20px;
+    border-radius: 18px;
+    background: #f7f9ff;
+    border: 1px solid rgba(78, 115, 223, 0.12);
+}
+
+.admin-user-card h4 {
+    margin: 0 0 8px;
+}
+
+.admin-user-card p {
+    margin: 0 0 10px;
+    color: #617094;
+}
+
+.admin-user-actions {
+    display: grid;
+    grid-template-columns: 180px 160px 160px;
+    gap: 12px;
+    align-items: center;
+}
+
+@media (max-width: 920px) {
+    .filters-grid,
+    .admin-user-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    header {
+        padding: 18px 20px;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    header a {
+        margin: 0 10px;
+    }
+
+    .hero h2 {
+        font-size: 26px;
+    }
+
+    .profile-layout {
+        grid-template-columns: 1fr;
+        margin-top: -24px;
+    }
+
+    .panel-header,
+    .profile-form-grid,
+    .card-actions,
+    .admin-user-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filters-grid,
+    .admin-user-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .info-row {
+        flex-direction: column;
+    }
 }
