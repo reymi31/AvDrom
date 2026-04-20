@@ -149,6 +149,42 @@ header a:hover {
     z-index: 2;
 }
 
+.vip-showcase {
+    margin-bottom: 24px;
+    padding: 28px;
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at top right, rgba(255, 214, 107, 0.3), transparent 30%),
+        linear-gradient(135deg, #1f2440, #2f3a78);
+    color: white;
+    box-shadow: 0 22px 50px rgba(31, 36, 64, 0.28);
+}
+
+.vip-header h3 {
+    margin: 6px 0 8px;
+    font-size: 30px;
+}
+
+.vip-header p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.vip-kicker {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 12px;
+    color: #ffd66b;
+}
+
+.vip-grid {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
 .home-filters-panel {
     margin-bottom: 24px;
 }
@@ -173,13 +209,19 @@ header a:hover {
     border: 1px solid rgba(78, 115, 223, 0.1);
 }
 
-.cars-container .car-card {
+.cars-container .car-card,
+.vip-grid .car-card {
     width: auto;
 }
 
 .car-card:hover {
     transform: translateY(-8px);
     box-shadow: 0 22px 44px rgba(43, 60, 113, 0.16);
+}
+
+.vip-card {
+    border: 1px solid rgba(255, 196, 59, 0.55);
+    box-shadow: 0 18px 40px rgba(255, 177, 60, 0.18);
 }
 
 .car-card img,
@@ -332,7 +374,8 @@ footer {
     box-shadow: 0 0 0 4px rgba(78, 115, 223, 0.14);
 }
 
-.upload-field {
+.upload-field,
+.vip-toggle {
     display: grid;
     gap: 10px;
     padding: 16px;
@@ -342,7 +385,14 @@ footer {
     color: #43527b;
 }
 
-.upload-field span {
+.vip-toggle {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    border-style: solid;
+}
+
+.upload-field span,
+.vip-toggle span {
     font-weight: 600;
 }
 
@@ -401,6 +451,12 @@ footer {
     letter-spacing: 0.03em;
 }
 
+.vip-card .card-badge,
+.vip-grid .card-badge {
+    background: linear-gradient(135deg, #ffd66b, #ffb13c);
+    color: #5b3600;
+}
+
 .card-meta {
     margin-top: 16px;
     color: #7280a2;
@@ -444,6 +500,11 @@ footer {
     text-align: center;
     background: #f5f7fe;
     color: #64739a;
+}
+
+.vip-empty {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.82);
 }
 
 .admin-users-list {
@@ -495,7 +556,8 @@ footer {
         margin: 0 10px;
     }
 
-    .hero h2 {
+    .hero h2,
+    .vip-header h3 {
         font-size: 26px;
     }
 

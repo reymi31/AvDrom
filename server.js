@@ -116,6 +116,7 @@ async function ensureItemsTable() {
       year INT,
       description TEXT,
       imageData LONGTEXT,
+      isVip TINYINT(1) NOT NULL DEFAULT 0,
       ownerId INT NOT NULL,
       createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (ownerId) REFERENCES users(id) ON DELETE CASCADE
@@ -139,6 +140,9 @@ async function ensureItemsTable() {
   }
   if (!columnNames.includes('imageData')) {
     await runQuery('ALTER TABLE items ADD COLUMN imageData LONGTEXT NULL AFTER description');
+  }
+  if (!columnNames.includes('isVip')) {
+    await runQuery('ALTER TABLE items ADD COLUMN isVip TINYINT(1) NOT NULL DEFAULT 0 AFTER imageData');
   }
 }
 
@@ -273,6 +277,7 @@ function normalizeItem(item) {
     year: item.year,
     description: item.description,
     imageData: item.imageData,
+    isVip: Boolean(item.isVip),
     ownerId: item.ownerId,
     ownerName: item.ownerName,
     createdAt: item.createdAt,
@@ -388,9 +393,7 @@ app.get('/api/auth/me', async (req, res) => {
 
 app.get('/api/users', requireAuthApi, requireAdmin, async (req, res) => {
   try {
-    const users = await runQuery(
-      'SELECT id, email, name, role, createdAt FROM users ORDER BY createdAt DESC'
-    );
+    const users = await runQuery('SELECT id, email, name, role, createdAt FROM users ORDER BY createdAt DESC');
     res.json(users);
   } catch (error) {
     console.error(error);
@@ -452,7 +455,7 @@ app.delete('/api/users/:id', requireAuthApi, requireAdmin, async (req, res) => {
 
 app.get('/api/items', async (req, res) => {
   const currentUserId = getCurrentUser(req) || 0;
-  const { brand = '', model = '', minPrice = '', maxPrice = '', year = '', favoritesOnly = 'false', ownerOnly = 'false' } = req.query;
+  const { brand = '', model = '', minPrice = '', maxPrice = '', year = '', favoritesOnly = 'false', vipOnly = 'false' } = req.query;
 
   const conditions = [];
   const params = [currentUserId, currentUserId];
@@ -480,9 +483,8 @@ app.get('/api/items', async (req, res) => {
   if (favoritesOnly === 'true') {
     conditions.push('favorites.id IS NOT NULL');
   }
-  if (ownerOnly === 'true') {
-    conditions.push('items.ownerId = ?');
-    params.push(currentUserId);
+  if (vipOnly === 'true') {
+    conditions.push('items.isVip = 1');
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -499,6 +501,7 @@ app.get('/api/items', async (req, res) => {
           items.year,
           items.description,
           items.imageData,
+          items.isVip,
           items.ownerId,
           items.createdAt,
           users.name AS ownerName,
@@ -510,7 +513,7 @@ app.get('/api/items', async (req, res) => {
           ON favorites.itemId = items.id
          AND favorites.userId = ?
         ${whereClause}
-        ORDER BY items.createdAt DESC
+        ORDER BY items.isVip DESC, items.createdAt DESC
       `,
       params
     );
@@ -523,7 +526,7 @@ app.get('/api/items', async (req, res) => {
 });
 
 app.post('/api/items', requireAuthApi, async (req, res) => {
-  const { title, brand, model, price, year, description, imageData } = req.body;
+  const { title, brand, model, price, year, description, imageData, isVip } = req.body;
 
   if (!title || title.trim().length < 2) {
     return res.status(400).json({ message: 'Название должно содержать минимум 2 символа' });
@@ -548,11 +551,13 @@ app.post('/api/items', requireAuthApi, async (req, res) => {
     return res.status(400).json({ message: 'Фотография должна быть изображением' });
   }
 
+  const vipValue = isVip ? 1 : 0;
+
   try {
     const result = await runQuery(
-      `INSERT INTO items (title, brand, model, price, year, description, imageData, ownerId)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title.trim(), brand.trim(), model.trim(), numericPrice, numericYear, description || '', imageData || null, req.userId]
+      `INSERT INTO items (title, brand, model, price, year, description, imageData, isVip, ownerId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [title.trim(), brand.trim(), model.trim(), numericPrice, numericYear, description || '', imageData || null, vipValue, req.userId]
     );
 
     res.status(201).json({
@@ -564,6 +569,7 @@ app.post('/api/items', requireAuthApi, async (req, res) => {
       year: numericYear,
       description: description || '',
       imageData: imageData || null,
+      isVip: Boolean(vipValue),
       ownerId: req.userId,
     });
   } catch (error) {
@@ -611,6 +617,7 @@ app.get('/api/favorites', requireAuthApi, async (req, res) => {
           items.year,
           items.description,
           items.imageData,
+          items.isVip,
           items.ownerId,
           items.createdAt,
           users.name AS ownerName,
@@ -620,7 +627,7 @@ app.get('/api/favorites', requireAuthApi, async (req, res) => {
         JOIN items ON items.id = favorites.itemId
         JOIN users ON users.id = items.ownerId
         WHERE favorites.userId = ?
-        ORDER BY favorites.createdAt DESC
+        ORDER BY items.isVip DESC, favorites.createdAt DESC
       `,
       [req.userId, req.userId]
     );

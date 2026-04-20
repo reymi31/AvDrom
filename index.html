@@ -23,6 +23,17 @@
     </section>
 
     <main class="home-layout">
+        <section class="vip-showcase">
+            <div class="vip-header">
+                <div>
+                    <p class="vip-kicker">Premium Selection</p>
+                    <h3>VIP-объявления</h3>
+                    <p>Подборка самых заметных предложений площадки.</p>
+                </div>
+            </div>
+            <div id="vip-items-list" class="vip-grid"></div>
+        </section>
+
         <section class="profile-panel home-filters-panel">
             <div class="panel-header">
                 <div>
@@ -89,6 +100,20 @@
             return params.toString();
         }
 
+        function renderItemCards(items) {
+            return items.map((item) => `
+                <article class="car-card listing-card ${item.isVip ? 'vip-card' : ''}">
+                    ${item.imageData ? `<img src="${item.imageData}" alt="${item.title}">` : '<div class="image-placeholder">Фото не загружено</div>'}
+                    <div class="card-badge">${item.isVip ? 'VIP' : item.brand}</div>
+                    <h3>${item.title}</h3>
+                    <p class="price-line">${Number(item.price).toLocaleString()} ₽</p>
+                    <p>${item.brand} ${item.model}${item.year ? `, ${item.year} г.` : ''}</p>
+                    <p>${item.description || 'Описание пока не добавлено.'}</p>
+                    <div class="card-meta">Автор: ${item.ownerName}</div>
+                </article>
+            `).join('');
+        }
+
         function renderHomeItems(items) {
             const container = document.getElementById('home-items-list');
 
@@ -99,17 +124,18 @@
                 return;
             }
 
-            container.innerHTML = items.map((item) => `
-                <article class="car-card listing-card">
-                    ${item.imageData ? `<img src="${item.imageData}" alt="${item.title}">` : '<div class="image-placeholder">Фото не загружено</div>'}
-                    <div class="card-badge">${item.brand}</div>
-                    <h3>${item.title}</h3>
-                    <p class="price-line">${Number(item.price).toLocaleString()} ₽</p>
-                    <p>${item.model}${item.year ? `, ${item.year} г.` : ''}</p>
-                    <p>${item.description || 'Описание пока не добавлено.'}</p>
-                    <div class="card-meta">Автор: ${item.ownerName}</div>
-                </article>
-            `).join('');
+            container.innerHTML = renderItemCards(items);
+        }
+
+        function renderVipItems(items) {
+            const container = document.getElementById('vip-items-list');
+
+            if (!Array.isArray(items) || items.length === 0) {
+                container.innerHTML = '<p class="empty-state vip-empty">VIP-объявления скоро появятся.</p>';
+                return;
+            }
+
+            container.innerHTML = renderItemCards(items.slice(0, 3));
         }
 
         async function loadHomeItems() {
@@ -117,6 +143,12 @@
             const response = await fetch(`/api/items${query ? `?${query}` : ''}`);
             const items = await response.json();
             renderHomeItems(items);
+        }
+
+        async function loadVipItems() {
+            const response = await fetch('/api/items?vipOnly=true');
+            const items = await response.json();
+            renderVipItems(items);
         }
 
         document.getElementById('home-filters-form').addEventListener('submit', (event) => {
@@ -130,6 +162,7 @@
         });
 
         updateAuthLink();
+        loadVipItems();
         loadHomeItems();
     </script>
 </body>
