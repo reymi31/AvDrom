@@ -3,24 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <title>Регистрация</title>
-    <link rel="stylesheet" href="register.css">
+    <link rel="stylesheet" href="/register.css">
 </head>
 <body>
 
 <div class="register-container">
-    <form class="register-form" action="/register" method="POST">
-
+    <form class="register-form" action="/api/auth/register" method="POST">
         <h2>Регистрация аккаунта</h2>
-        <input type="hidden" name="action" value="register">
-        <input type="text" name="username" placeholder="Логин" required>
 
+        <input type="text" name="name" placeholder="Имя" required>
+        <input type="email" name="email" placeholder="Email" required>
         <input type="password" name="password" placeholder="Пароль" required>
 
         <button type="submit">Зарегистрироваться</button>
-        <p>Уже есть аккаунт? <a href="login.html">Войти</a></p>
-      
+        <p>Уже есть аккаунт? <a href="/auth/login">Войти</a></p>
     </form>
-    
 </div>
 </body>
 </html>
