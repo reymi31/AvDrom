@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Профиль</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <h1>AvDrom</h1>
+        <nav>
+            <a href="index.html">Главная</a>
+            <a href="about.html">О нас</a>
+            <a href="/profile">Профиль</a>
+        </nav>
+    </header>
+
+    <section class="hero profile-hero">
+        <h2>Личный кабинет продавца</h2>
+        <p id="profile-status">Загрузка данных...</p>
+    </section>
+
+    <main class="profile-layout">
+        <section class="profile-panel">
+            <h3>Данные аккаунта</h3>
+            <div id="profile-data" class="profile-data"></div>
+        </section>
+
+        <section class="profile-panel">
+            <h3>Добавить объявление</h3>
+            <form id="item-form" class="profile-form">
+                <input type="text" id="item-title" placeholder="Название объявления" required>
+                <input type="text" id="item-description" placeholder="Краткое описание">
+                <button type="submit" class="primary-button">Создать объявление</button>
+            </form>
+        </section>
+
+        <section class="profile-panel profile-panel-wide">
+            <div class="panel-header">
+                <h3>Мои объявления</h3>
+                <form action="/api/auth/logout" method="POST">
+                    <button type="submit" class="secondary-button">Выйти</button>
+                </form>
+            </div>
+            <div id="items-list" class="cars-container"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>© 2026 AvDrom. Все права защищены.</p>
+    </footer>
+
+    <script>
+        async function loadProfile() {
+            const response = await fetch('/api/auth/me');
+            if (!response.ok) {
+                window.location.href = '/auth/login';
+                return;
+            }
+
+            const user = await response.json();
+            document.getElementById('profile-status').textContent = 'Вы вошли в защищенную часть сайта.';
+            document.getElementById('profile-data').innerHTML = `
+                <div class="info-row"><span>Имя</span><strong>${user.name}</strong></div>
+                <div class="info-row"><span>Email</span><strong>${user.email}</strong></div>
+                <div class="info-row"><span>Дата регистрации</span><strong>${new Date(user.createdAt).toLocaleString()}</strong></div>
+            `;
+        }
+
+        async function loadItems() {
+            const response = await fetch('/api/items');
+            const items = await response.json();
+            const itemsList = document.getElementById('items-list');
+
+            if (!Array.isArray(items) || items.length === 0) {
+                itemsList.innerHTML = '<p class="empty-state">Объявлений пока нет. Создай первое выше.</p>';
+                return;
+            }
+
+            itemsList.innerHTML = items.map((item) => `
+                <article class="car-card">
+                    <div class="card-badge">Объявление</div>
+                    <h3>${item.title}</h3>
+                    <p>${item.description || 'Описание пока не добавлено.'}</p>
+                    <div class="card-meta">Автор: ${item.ownerName}</div>
+                </article>
+            `).join('');
+        }
+
+        document.getElementById('item-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const title = document.getElementById('item-title').value;
+            const description = document.getElementById('item-description').value;
+
+            const response = await fetch('/api/items', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title, description })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                alert(errorText);
+                return;
+            }
+
+            document.getElementById('item-form').reset();
+            loadItems();
+        });
+
+        loadProfile();
+        loadItems();
+    </script>
+</body>
+</html>
