@@ -3,52 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <title>Продажа автомобилей</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-
     <header>
         <h1>AvDrom</h1>
-        <nav>
-            <a href="#">Главная</a>
+        <nav id="main-nav">
+            <a href="/">Главная</a>
             <a href="about.html">О нас</a>
-            <a href="login.html">Войти</a>
+            <a href="/profile">Профиль</a>
+            <a href="/auth/login" id="auth-link">Войти</a>
         </nav>
     </header>
 
     <section class="hero">
         <h2>Торговая площадка продажи автомобилей</h2>
-        <button>Смотреть авто</button>
+        <p>Подбирай автомобили по марке, модели, стоимости и году выпуска.</p>
+        <button id="scroll-to-cars" type="button">Смотреть авто</button>
     </section>
 
-    <section class="cars">
+    <main class="home-layout">
+        <section class="profile-panel home-filters-panel">
+            <div class="panel-header">
+                <div>
+                    <h3>Фильтрация объявлений</h3>
+                    <p class="panel-subtitle">Используй фильтры, чтобы быстро найти подходящий автомобиль.</p>
+                </div>
+            </div>
 
-        <div class="car-card">
-            <img src="images/car1.jpg" alt="Car">
-            <h3>BMW X5</h3>
-            <p>2022 год • 3.0L (дизель) • 8 500 000 ₽</p>
-            <button>Подробнее</button>
-        </div>
+            <form id="home-filters-form" class="filters-grid">
+                <input type="text" id="home-filter-brand" placeholder="Марка">
+                <input type="text" id="home-filter-model" placeholder="Модель">
+                <input type="number" id="home-filter-min-price" placeholder="Цена от">
+                <input type="number" id="home-filter-max-price" placeholder="Цена до">
+                <input type="number" id="home-filter-year" placeholder="Год">
+                <button type="submit" class="primary-button compact-button">Показать объявления</button>
+            </form>
+        </section>
 
-        <div class="car-card">
-            <img src="images/car2.jpg" alt="Car">
-            <h3>Mercedes C-Class</h3>
-            <p>2021 год • 2.0L (бензин) • 5 200 000 ₽</p>
-            <button>Подробнее</button>
-        </div>
-
-        <div class="car-card">
-            <img src="images/car3.jpg" alt="Car">
-            <h3>Toyota Camry</h3>
-            <p>2023 год • 2.5L (бензин) • 3 400 000 ₽</p>
-            <button>Подробнее</button>
-        </div>
-
-    </section>
+        <section class="cars home-cars-section" id="cars-section">
+            <div id="home-items-list" class="cars-container"></div>
+        </section>
+    </main>
 
     <footer>
         <p>© 2026 AvDrom. Все права защищены.</p>
     </footer>
 
+    <script>
+        let hasHomeFiltersApplied = false;
+
+        async function updateAuthLink() {
+            const authLink = document.getElementById('auth-link');
+            const response = await fetch('/api/auth/me');
+
+            if (!response.ok) {
+                authLink.textContent = 'Войти';
+                authLink.href = '/auth/login';
+                return;
+            }
+
+            authLink.textContent = 'Выйти';
+            authLink.href = '#';
+            authLink.addEventListener('click', async (event) => {
+                event.preventDefault();
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.reload();
+            }, { once: true });
+        }
+
+        function getHomeFilters() {
+            const params = new URLSearchParams();
+            const brand = document.getElementById('home-filter-brand').value.trim();
+            const model = document.getElementById('home-filter-model').value.trim();
+            const minPrice = document.getElementById('home-filter-min-price').value.trim();
+            const maxPrice = document.getElementById('home-filter-max-price').value.trim();
+            const year = document.getElementById('home-filter-year').value.trim();
+
+            if (brand) params.set('brand', brand);
+            if (model) params.set('model', model);
+            if (minPrice) params.set('minPrice', minPrice);
+            if (maxPrice) params.set('maxPrice', maxPrice);
+            if (year) params.set('year', year);
+
+            return params.toString();
+        }
+
+        function renderHomeItems(items) {
+            const container = document.getElementById('home-items-list');
+
+            if (!Array.isArray(items) || items.length === 0) {
+                container.innerHTML = hasHomeFiltersApplied
+                    ? '<p class="empty-state">По заданным фильтрам ничего не найдено.</p>'
+                    : '';
+                return;
+            }
+
+            container.innerHTML = items.map((item) => `
+                <article class="car-card listing-card">
+                    ${item.imageData ? `<img src="${item.imageData}" alt="${item.title}">` : '<div class="image-placeholder">Фото не загружено</div>'}
+                    <div class="card-badge">${item.brand}</div>
+                    <h3>${item.title}</h3>
+                    <p class="price-line">${Number(item.price).toLocaleString()} ₽</p>
+                    <p>${item.model}${item.year ? `, ${item.year} г.` : ''}</p>
+                    <p>${item.description || 'Описание пока не добавлено.'}</p>
+                    <div class="card-meta">Автор: ${item.ownerName}</div>
+                </article>
+            `).join('');
+        }
+
+        async function loadHomeItems() {
+            const query = getHomeFilters();
+            const response = await fetch(`/api/items${query ? `?${query}` : ''}`);
+            const items = await response.json();
+            renderHomeItems(items);
+        }
+
+        document.getElementById('home-filters-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            hasHomeFiltersApplied = true;
+            loadHomeItems();
+        });
+
+        document.getElementById('scroll-to-cars').addEventListener('click', () => {
+            document.getElementById('cars-section').scrollIntoView({ behavior: 'smooth' });
+        });
+
+        updateAuthLink();
+        loadHomeItems();
+    </script>
 </body>
 </html>
