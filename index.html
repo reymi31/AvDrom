@@ -10,8 +10,11 @@
         <h1>AvDrom</h1>
         <nav id="main-nav">
             <a href="/">Главная</a>
-            <a href="about.html">О нас</a>
-            <a href="/profile">Профиль</a>
+            <a href="/cars">Каталог</a>
+            <a href="/about">О нас</a>
+            <a href="/favorites" data-private class="hidden">Избранное</a>
+            <a href="/profile" data-private class="hidden">Профиль</a>
+            <span id="user-chip" class="user-chip hidden"></span>
             <a href="/auth/login" id="auth-link">Войти</a>
         </nav>
     </header>
@@ -61,27 +64,9 @@
         <p>© 2026 AvDrom. Все права защищены.</p>
     </footer>
 
+    <script src="/app.js"></script>
     <script>
         let hasHomeFiltersApplied = false;
-
-        async function updateAuthLink() {
-            const authLink = document.getElementById('auth-link');
-            const response = await fetch('/api/auth/me');
-
-            if (!response.ok) {
-                authLink.textContent = 'Войти';
-                authLink.href = '/auth/login';
-                return;
-            }
-
-            authLink.textContent = 'Выйти';
-            authLink.href = '#';
-            authLink.addEventListener('click', async (event) => {
-                event.preventDefault();
-                await fetch('/api/auth/logout', { method: 'POST' });
-                window.location.reload();
-            }, { once: true });
-        }
 
         function getHomeFilters() {
             const params = new URLSearchParams();
@@ -161,7 +146,7 @@
             document.getElementById('cars-section').scrollIntoView({ behavior: 'smooth' });
         });
 
-        updateAuthLink();
+        Avdrom.initAuth();
         loadVipItems();
         loadHomeItems();
     </script>
