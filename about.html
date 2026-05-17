@@ -3,40 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <title>О нас</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+    <header>
+        <h1>AvDrom</h1>
+        <nav id="main-nav">
+            <a href="/">Главная</a>
+            <a href="/cars">Каталог</a>
+            <a href="/about">О нас</a>
+            <a href="/favorites" data-private class="hidden">Избранное</a>
+            <a href="/profile" data-private class="hidden">Профиль</a>
+            <span id="user-chip" class="user-chip hidden"></span>
+            <a href="/auth/login" id="auth-link">Войти</a>
+        </nav>
+    </header>
 
-<header>
-    <h1>AvDrom</h1>
-    <nav>
-        <a href="index.html">Главная</a>
-        <a href="about.html">О нас</a>
-        <a href="#">Контакты</a>
-    </nav>
-</header>
+    <section class="hero profile-hero">
+        <h2 id="about-title">Загрузка...</h2>
+        <p>Информация о проекте AvDrom.</p>
+    </section>
 
-<section class="about">
-    <h2>О нашей компании</h2>
+    <section class="about profile-panel" style="max-width: 980px;">
+        <div id="about-loading" class="spinner"></div>
+        <div id="about-error" class="error-banner hidden"></div>
+        <div id="about-content" class="hidden"></div>
+    </section>
 
-    <p>
-        AvDrom — это современная площадка для покупки и продажи автомобилей.
-        Мы помогаем людям находить надёжные автомобили по выгодным ценам.
-    </p>
+    <footer>
+        <p>© 2026 AvDrom. Все права защищены.</p>
+    </footer>
 
-    <p>
-        Наша компания работает на рынке с 2020 года и уже помогла тысячам
-        клиентов выбрать автомобиль своей мечты.
-    </p>
+    <script src="/app.js"></script>
+    <script>
+        async function loadAbout() {
+            const startedAt = Date.now();
+            try {
+                const content = await Avdrom.loadContent('about');
+                Avdrom.setText('about-title', content.title);
 
-    <p>
-        У нас вы можете найти автомобили разных брендов...
-    </p>
-</section>
+                const paragraphs = Array.isArray(content.paragraphs) ? content.paragraphs : [];
+                Avdrom.setHTML('about-content', paragraphs.map((p) => `<p>${p}</p>`).join(''));
+                await Avdrom.ensureMinDuration(startedAt, 700);
+                document.getElementById('about-loading').classList.add('hidden');
+                document.getElementById('about-content').classList.remove('hidden');
+            } catch (err) {
+                await Avdrom.ensureMinDuration(startedAt, 700);
+                document.getElementById('about-loading').classList.add('hidden');
+                Avdrom.setText('about-title', 'О нас');
+                Avdrom.showError('about-error', 'Не удалось загрузить контент страницы.');
+            }
+        }
 
-<footer>
-    <p>© 2026 AvDrom. Все права защищены.</p>
-</footer>
-
+        (async () => {
+            await Avdrom.initAuth();
+            await loadAbout();
+        })();
+    </script>
 </body>
 </html>
