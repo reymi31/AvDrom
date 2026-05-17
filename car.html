@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Автомобиль</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <h1>AvDrom</h1>
+        <nav id="main-nav">
+            <a href="/">Главная</a>
+            <a href="/cars">Каталог</a>
+            <a href="/about">О нас</a>
+            <a href="/favorites" data-private class="hidden">Избранное</a>
+            <a href="/profile" data-private class="hidden">Профиль</a>
+            <span id="user-chip" class="user-chip hidden"></span>
+            <a href="/auth/login" id="auth-link">Войти</a>
+        </nav>
+    </header>
+
+    <section class="hero profile-hero">
+        <h2 id="car-page-title">Загрузка...</h2>
+        <p id="car-page-subtitle">Подробная информация об объявлении.</p>
+    </section>
+
+    <main class="home-layout">
+        <section class="profile-panel">
+            <div id="car-error" class="error-banner hidden"></div>
+            <div id="car-loading" class="spinner"></div>
+            <div id="car-content" class="hidden"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>© 2026 AvDrom. Все права защищены.</p>
+    </footer>
+
+    <script src="/app.js"></script>
+    <script>
+        function getItemId() {
+            const parts = window.location.pathname.split('/').filter(Boolean);
+            return parts[parts.length - 1];
+        }
+
+        function renderItem(item) {
+            const container = document.getElementById('car-content');
+            const img = item.imageData
+                ? `<img src="${item.imageData}" alt="${item.title}" style="width:100%; max-height: 340px; object-fit: cover; border-radius: 16px;">`
+                : `<div class="image-placeholder" style="height: 240px;">Фото не загружено</div>`;
+
+            const badge = item.isVip ? '<span class="card-badge" style="margin-left: 10px;">VIP</span>' : '';
+            const favoriteButton = Avdrom.user
+                ? `<button type="button" id="favorite-btn" class="${item.isFavorite ? 'favorite-button active' : 'favorite-button'}">
+                        ${item.isFavorite ? 'Убрать из избранного' : 'В избранное'}
+                   </button>`
+                : `<a class="favorite-button" href="/auth/login">Войти для избранного</a>`;
+
+            container.innerHTML = `
+                ${img}
+                <div style="margin-top: 18px; display:flex; align-items:center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                    <div>
+                        <h3 style="margin: 0;">${item.title} ${badge}</h3>
+                        <p style="margin: 8px 0 0; color:#5e6783;">${item.brand} ${item.model}${item.year ? `, ${item.year} г.` : ''}</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="price-line" style="margin: 0;">${Avdrom.formatPrice(item.price)} $</div>
+                        <div class="card-meta" style="margin-top: 6px;">Автор: ${item.ownerName}</div>
+                    </div>
+                </div>
+                <p style="margin-top: 16px;">${item.description || 'Описание пока не добавлено.'}</p>
+                <div style="margin-top: 18px; display:flex; gap: 12px; flex-wrap: wrap;">
+                    ${favoriteButton}
+                    <a class="secondary-button" href="/cars" style="text-align:center; padding: 11px 16px; border-radius: 12px;">Назад в каталог</a>
+                </div>
+            `;
+
+            const favBtn = document.getElementById('favorite-btn');
+            if (favBtn) {
+                favBtn.addEventListener('click', async () => {
+                    try {
+                        await Avdrom.apiFetch(`/api/favorites/${item.id}`, { method: item.isFavorite ? 'DELETE' : 'POST' });
+                        item.isFavorite = !item.isFavorite;
+                        favBtn.classList.toggle('active', item.isFavorite);
+                        favBtn.textContent = item.isFavorite ? 'Убрать из избранного' : 'В избранное';
+                    } catch (err) {
+                        Avdrom.showError('car-error', Avdrom.normalizeErrorMessage(err));
+                    }
+                });
+            }
+        }
+
+        async function loadItem() {
+            const id = getItemId();
+            const startedAt = Date.now();
+            try {
+                const item = await Avdrom.apiJson(`/api/items/${encodeURIComponent(id)}`);
+                await Avdrom.ensureMinDuration(startedAt, 700);
+                document.getElementById('car-loading').classList.add('hidden');
+                document.getElementById('car-content').classList.remove('hidden');
+                Avdrom.setText('car-page-title', item.title);
+                renderItem(item);
+            } catch (err) {
+                await Avdrom.ensureMinDuration(startedAt, 700);
+                document.getElementById('car-loading').classList.add('hidden');
+                Avdrom.showError('car-error', Avdrom.normalizeErrorMessage(err));
+                Avdrom.setText('car-page-title', 'Объявление не найдено');
+            }
+        }
+
+        (async () => {
+            await Avdrom.initAuth();
+            await loadItem();
+        })();
+    </script>
+</body>
+</html>
