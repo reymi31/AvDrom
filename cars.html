@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Каталог автомобилей</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <h1>AvDrom</h1>
+        <nav id="main-nav">
+            <a href="/">Главная</a>
+            <a href="/cars">Каталог</a>
+            <a href="/about">О нас</a>
+            <a href="/favorites" data-private class="hidden">Избранное</a>
+            <a href="/profile" data-private class="hidden">Профиль</a>
+            <span id="user-chip" class="user-chip hidden"></span>
+            <a href="/auth/login" id="auth-link">Войти</a>
+        </nav>
+    </header>
+
+    <section class="hero profile-hero">
+        <h2 id="cars-title">Каталог</h2>
+        <p id="cars-subtitle">Загрузка...</p>
+    </section>
+
+    <main class="home-layout">
+        <section class="profile-panel home-filters-panel">
+            <div class="panel-header">
+                <div>
+                    <h3>Поиск и фильтры</h3>
+                    <p class="panel-subtitle">Найди автомобиль по запросу и параметрам.</p>
+                </div>
+            </div>
+
+            <div id="cars-error" class="error-banner hidden"></div>
+
+            <form id="cars-filters-form" class="filters-grid">
+                <input type="text" id="cars-q" placeholder="Поиск: название, марка, модель">
+                <input type="text" id="cars-brand" placeholder="Марка">
+                <input type="text" id="cars-model" placeholder="Модель">
+                <input type="number" id="cars-min-price" placeholder="Цена от">
+                <input type="number" id="cars-max-price" placeholder="Цена до">
+                <input type="number" id="cars-year" placeholder="Год">
+                <select id="cars-sort">
+                    <option value="date_desc">Сначала новые</option>
+                    <option value="price_asc">Цена по возрастанию</option>
+                    <option value="price_desc">Цена по убыванию</option>
+                    <option value="title_asc">Название А-Я</option>
+                    <option value="title_desc">Название Я-А</option>
+                </select>
+                <button type="submit" class="primary-button compact-button">Найти</button>
+            </form>
+        </section>
+
+        <section class="cars home-cars-section" id="cars-section">
+            <div id="cars-loading" class="skeleton-grid hidden"></div>
+            <div id="cars-items" class="cars-container"></div>
+            <div class="panel-header">
+                <button id="cars-load-more" type="button" class="secondary-button hidden">Загрузить еще</button>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>© 2026 AvDrom. Все права защищены.</p>
+    </footer>
+
+    <script src="/app.js"></script>
+    <script>
+        const state = {
+            limit: 6,
+            offset: 0,
+            hasMore: true,
+            currentQuery: ''
+        };
+
+        function setLoading(isLoading) {
+            const skeleton = document.getElementById('cars-loading');
+            const items = document.getElementById('cars-items');
+            const loadMore = document.getElementById('cars-load-more');
+
+            if (isLoading) {
+                skeleton.classList.remove('hidden');
+                skeleton.innerHTML = new Array(6).fill(0).map(() => '<div class="skeleton-card"></div>').join('');
+                items.classList.add('hidden');
+                loadMore.classList.add('hidden');
+            } else {
+                skeleton.classList.add('hidden');
+                items.classList.remove('hidden');
+            }
+        }
+
+        function buildQuery() {
+            const params = new URLSearchParams();
+            const q = document.getElementById('cars-q').value.trim();
+            const brand = document.getElementById('cars-brand').value.trim();
+            const model = document.getElementById('cars-model').value.trim();
+            const minPrice = document.getElementById('cars-min-price').value.trim();
+            const maxPrice = document.getElementById('cars-max-price').value.trim();
+            const year = document.getElementById('cars-year').value.trim();
+            const sort = document.getElementById('cars-sort').value;
+
+            if (q) params.set('q', q);
+            if (brand) params.set('brand', brand);
+            if (model) params.set('model', model);
+            if (minPrice) params.set('minPrice', minPrice);
+            if (maxPrice) params.set('maxPrice', maxPrice);
+            if (year) params.set('year', year);
+            if (sort) params.set('sort', sort);
+
+            params.set('limit', String(state.limit));
+            params.set('offset', String(state.offset));
+            return params.toString();
+        }
+
+        function cardHtml(item) {
+            const vipClass = item.isVip ? 'vip-card' : '';
+            const badge = item.isVip ? 'VIP' : item.brand;
+            const img = item.imageData
+                ? `<img src="${item.imageData}" alt="${item.title}">`
+                : '<div class="image-placeholder">Фото не загружено</div>';
+
+            const favoriteButton = Avdrom.user
+                ? `<button type="button" class="${item.isFavorite ? 'favorite-button active' : 'favorite-button'}" data-favorite-id="${item.id}">
+                        ${item.isFavorite ? 'Убрать из избранного' : 'В избранное'}
+                   </button>`
+                : `<a class="favorite-button" href="/auth/login">Войти для избранного</a>`;
+
+            return `
+                <article class="car-card listing-card ${vipClass}">
+                    ${img}
+                    <div class="card-badge">${badge}</div>
+                    <h3>${item.title}</h3>
+                    <p class="price-line">${Avdrom.formatPrice(item.price)} $</p>
+                    <p>${item.brand} ${item.model}${item.year ? `, ${item.year} г.` : ''}</p>
+                    <p>${item.description || 'Описание пока не добавлено.'}</p>
+                    <div class="card-meta">Автор: ${item.ownerName}</div>
+                    <div class="card-actions">
+                        ${favoriteButton}
+                        <a class="secondary-button" href="/cars/${item.id}" style="text-align:center; padding: 11px 16px; border-radius: 12px;">Подробнее</a>
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderItems(items, append) {
+            const container = document.getElementById('cars-items');
+            if (!append) container.innerHTML = '';
+
+            if (!Array.isArray(items) || items.length === 0) {
+                if (!append) container.innerHTML = '<p class="empty-state">Ничего не найдено. Измени фильтры и попробуй снова.</p>';
+                return;
+            }
+
+            container.insertAdjacentHTML('beforeend', items.map(cardHtml).join(''));
+        }
+
+        function updateLoadMoreButton() {
+            const btn = document.getElementById('cars-load-more');
+            btn.classList.toggle('hidden', !state.hasMore);
+        }
+
+        async function loadPageContent() {
+            try {
+                const content = await Avdrom.loadContent('cars');
+                Avdrom.setText('cars-title', content.title);
+                Avdrom.setText('cars-subtitle', content.subtitle);
+            } catch {
+                Avdrom.setText('cars-subtitle', 'Каталог объявлений');
+            }
+        }
+
+        async function fetchItems(append = false) {
+            Avdrom.clearError('cars-error');
+            setLoading(!append);
+            const startedAt = Date.now();
+            try {
+                const query = buildQuery();
+                state.currentQuery = query;
+                const response = await fetch(`/api/items?${query}`);
+                const items = await response.json();
+
+                // Heuristic: if we got less than limit, no more pages
+                state.hasMore = Array.isArray(items) && items.length === state.limit;
+                renderItems(items, append);
+                updateLoadMoreButton();
+            } catch (err) {
+                Avdrom.showError('cars-error', Avdrom.normalizeErrorMessage(err));
+            } finally {
+                await Avdrom.ensureMinDuration(startedAt, 900);
+                setLoading(false);
+            }
+        }
+
+        document.getElementById('cars-filters-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            state.offset = 0;
+            fetchItems(false);
+        });
+
+        document.getElementById('cars-load-more').addEventListener('click', () => {
+            state.offset += state.limit;
+            fetchItems(true);
+        });
+
+        document.getElementById('cars-items').addEventListener('click', async (event) => {
+            const button = event.target.closest('[data-favorite-id]');
+            if (!button) return;
+
+            const itemId = button.dataset.favoriteId;
+            const isActive = button.classList.contains('active');
+
+            try {
+                await Avdrom.apiFetch(`/api/favorites/${itemId}`, { method: isActive ? 'DELETE' : 'POST' });
+                button.classList.toggle('active', !isActive);
+                button.textContent = isActive ? 'В избранное' : 'Убрать из избранного';
+            } catch (err) {
+                Avdrom.showError('cars-error', Avdrom.normalizeErrorMessage(err));
+            }
+        });
+
+        (async () => {
+            await Avdrom.initAuth();
+            await loadPageContent();
+            await fetchItems(false);
+        })();
+    </script>
+</body>
+</html>
