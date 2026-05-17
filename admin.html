@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Админ-панель</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <h1>AvDrom</h1>
+        <nav id="main-nav">
+            <a href="/">Главная</a>
+            <a href="/cars">Каталог</a>
+            <a href="/about">О нас</a>
+            <a href="/favorites" data-private class="hidden">Избранное</a>
+            <a href="/profile" data-private class="hidden">Профиль</a>
+            <a href="/admin" data-private data-admin class="hidden">Админ</a>
+            <span id="user-chip" class="user-chip hidden"></span>
+            <a href="/auth/login" id="auth-link">Войти</a>
+        </nav>
+    </header>
+
+    <section class="hero profile-hero">
+        <h2 id="admin-title">Админ-панель</h2>
+        <p id="admin-subtitle">Загрузка...</p>
+    </section>
+
+    <main class="home-layout">
+        <section class="profile-panel">
+            <div id="admin-error" class="error-banner hidden"></div>
+            <div id="admin-users-loading" class="spinner hidden"></div>
+            <div id="admin-users" class="admin-users-list"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>© 2026 AvDrom. Все права защищены.</p>
+    </footer>
+
+    <script src="/app.js"></script>
+    <script>
+        function renderUsers(users) {
+            const container = document.getElementById('admin-users');
+            container.innerHTML = users.map((user) => `
+                <article class="admin-user-card">
+                    <div>
+                        <h4>${user.name}</h4>
+                        <p>${user.email}</p>
+                        <span class="card-badge">${user.role}</span>
+                    </div>
+                    <div class="admin-user-actions">
+                        <select data-role-select="${user.id}" ${Avdrom.user && user.id === Avdrom.user.id ? 'disabled' : ''}>
+                            <option value="user" ${user.role === 'user' ? 'selected' : ''}>user</option>
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>admin</option>
+                        </select>
+                        <button type="button" class="primary-button compact-button" data-role-save="${user.id}" ${Avdrom.user && user.id === Avdrom.user.id ? 'disabled' : ''}>Сменить роль</button>
+                        <button type="button" class="danger-button" data-user-delete="${user.id}" ${Avdrom.user && user.id === Avdrom.user.id ? 'disabled' : ''}>Удалить</button>
+                    </div>
+                </article>
+            `).join('');
+        }
+
+        async function loadPageContent() {
+            try {
+                const content = await Avdrom.loadContent('admin');
+                Avdrom.setText('admin-title', content.title);
+                Avdrom.setText('admin-subtitle', content.subtitle);
+            } catch {
+                Avdrom.setText('admin-subtitle', 'Управление пользователями');
+            }
+        }
+
+        async function loadUsers() {
+            Avdrom.clearError('admin-error');
+            document.getElementById('admin-users-loading').classList.remove('hidden');
+            const startedAt = Date.now();
+
+            try {
+                const users = await Avdrom.apiJson('/api/users');
+                renderUsers(users);
+            } catch (err) {
+                Avdrom.showError('admin-error', Avdrom.normalizeErrorMessage(err));
+            } finally {
+                await Avdrom.ensureMinDuration(startedAt, 700);
+                document.getElementById('admin-users-loading').classList.add('hidden');
+            }
+        }
+
+        async function updateRole(userId, role) {
+            try {
+                await Avdrom.apiFetch(`/api/users/${userId}/role`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role })
+                });
+                loadUsers();
+            } catch (err) {
+                Avdrom.showError('admin-error', Avdrom.normalizeErrorMessage(err));
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Удалить аккаунт этого пользователя?')) return;
+            try {
+                await Avdrom.apiFetch(`/api/users/${userId}`, { method: 'DELETE' });
+                loadUsers();
+            } catch (err) {
+                Avdrom.showError('admin-error', Avdrom.normalizeErrorMessage(err));
+            }
+        }
+
+        document.getElementById('admin-users').addEventListener('click', (event) => {
+            const saveButton = event.target.closest('[data-role-save]');
+            if (saveButton) {
+                const userId = saveButton.dataset.roleSave;
+                const role = document.querySelector(`[data-role-select="${userId}"]`).value;
+                updateRole(userId, role);
+            }
+
+            const deleteButton = event.target.closest('[data-user-delete]');
+            if (deleteButton) {
+                deleteUser(deleteButton.dataset.userDelete);
+            }
+        });
+
+        (async () => {
+            await Avdrom.initAuth();
+            await loadPageContent();
+            await loadUsers();
+        })();
+    </script>
+</body>
+</html>
