@@ -38,20 +38,37 @@
     <script>
         async function loadAbout() {
             const startedAt = Date.now();
-            try {
-                const content = await Avdrom.loadContent('about');
-                Avdrom.setText('about-title', content.title);
-
-                const paragraphs = Array.isArray(content.paragraphs) ? content.paragraphs : [];
-                Avdrom.setHTML('about-content', paragraphs.map((p) => `<p>${p}</p>`).join(''));
-                await Avdrom.ensureMinDuration(startedAt, 700);
+            const defaultParagraphs = [
+                'AvDrom — это простая и удобная площадка для поиска и продажи автомобилей.',
+                'Здесь можно быстро отобрать авто по марке, модели, цене и году выпуска.'
+            ];
+            const hideSpinner = () => {
                 document.getElementById('about-loading').classList.add('hidden');
                 document.getElementById('about-content').classList.remove('hidden');
+            };
+
+            const fallbackTimer = setTimeout(() => {
+                if (document.getElementById('about-content').classList.contains('hidden')) {
+                    Avdrom.setHTML('about-content', defaultParagraphs.map((p) => `<p>${p}</p>`).join(''));
+                    hideSpinner();
+                }
+            }, 1800);
+
+            try {
+                const content = await Avdrom.loadContent('about');
+                Avdrom.setText('about-title', content.title || 'О нас');
+
+                const paragraphs = Array.isArray(content.paragraphs) && content.paragraphs.length > 0
+                    ? content.paragraphs
+                    : defaultParagraphs;
+                Avdrom.setHTML('about-content', paragraphs.map((p) => `<p>${p}</p>`).join(''));
             } catch (err) {
-                await Avdrom.ensureMinDuration(startedAt, 700);
-                document.getElementById('about-loading').classList.add('hidden');
                 Avdrom.setText('about-title', 'О нас');
-                Avdrom.showError('about-error', 'Не удалось загрузить контент страницы.');
+                Avdrom.setHTML('about-content', defaultParagraphs.map((p) => `<p>${p}</p>`).join(''));
+            } finally {
+                clearTimeout(fallbackTimer);
+                await Avdrom.ensureMinDuration(startedAt, 1200);
+                hideSpinner();
             }
         }
 
