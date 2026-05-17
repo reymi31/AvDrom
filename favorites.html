@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Избранное</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <h1>AvDrom</h1>
+        <nav id="main-nav">
+            <a href="/">Главная</a>
+            <a href="/cars">Каталог</a>
+            <a href="/about">О нас</a>
+            <a href="/favorites" data-private class="hidden">Избранное</a>
+            <a href="/profile" data-private class="hidden">Профиль</a>
+            <span id="user-chip" class="user-chip hidden"></span>
+            <a href="/auth/login" id="auth-link">Войти</a>
+        </nav>
+    </header>
+
+    <section class="hero profile-hero">
+        <h2 id="favorites-title">Избранное</h2>
+        <p id="favorites-subtitle">Загрузка...</p>
+    </section>
+
+    <main class="home-layout">
+        <section class="profile-panel">
+            <div id="favorites-error" class="error-banner hidden"></div>
+            <div id="favorites-loading" class="skeleton-grid hidden"></div>
+            <div id="favorites-items" class="cars-container"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>© 2026 AvDrom. Все права защищены.</p>
+    </footer>
+
+    <script src="/app.js"></script>
+    <script>
+        function setLoading(isLoading) {
+            const skeleton = document.getElementById('favorites-loading');
+            skeleton.classList.toggle('hidden', !isLoading);
+            if (isLoading) {
+                skeleton.innerHTML = new Array(4).fill(0).map(() => '<div class="skeleton-card"></div>').join('');
+            }
+        }
+
+        function cardHtml(item) {
+            const vipClass = item.isVip ? 'vip-card' : '';
+            const badge = item.isVip ? 'VIP' : item.brand;
+            const img = item.imageData
+                ? `<img src="${item.imageData}" alt="${item.title}">`
+                : '<div class="image-placeholder">Фото не загружено</div>';
+
+            return `
+                <article class="car-card listing-card ${vipClass}">
+                    ${img}
+                    <div class="card-badge">${badge}</div>
+                    <h3>${item.title}</h3>
+                    <p class="price-line">${Avdrom.formatPrice(item.price)} $</p>
+                    <p>${item.brand} ${item.model}${item.year ? `, ${item.year} г.` : ''}</p>
+                    <p>${item.description || 'Описание пока не добавлено.'}</p>
+                    <div class="card-actions">
+                        <button type="button" class="favorite-button active" data-favorite-id="${item.id}">Убрать</button>
+                        <a class="secondary-button" href="/cars/${item.id}" style="text-align:center; padding: 11px 16px; border-radius: 12px;">Подробнее</a>
+                    </div>
+                </article>
+            `;
+        }
+
+        async function loadPageContent() {
+            try {
+                const content = await Avdrom.loadContent('favorites');
+                Avdrom.setText('favorites-title', content.title);
+                Avdrom.setText('favorites-subtitle', content.subtitle);
+            } catch {
+                Avdrom.setText('favorites-subtitle', 'Список сохраненных объявлений');
+            }
+        }
+
+        async function loadFavorites() {
+            Avdrom.clearError('favorites-error');
+            setLoading(true);
+            const startedAt = Date.now();
+            try {
+                const items = await Avdrom.apiJson('/api/favorites');
+                const container = document.getElementById('favorites-items');
+                if (!Array.isArray(items) || items.length === 0) {
+                    container.innerHTML = '<p class="empty-state">В избранном пока пусто.</p>';
+                } else {
+                    container.innerHTML = items.map(cardHtml).join('');
+                }
+            } catch (err) {
+                Avdrom.showError('favorites-error', Avdrom.normalizeErrorMessage(err));
+            } finally {
+                await Avdrom.ensureMinDuration(startedAt, 900);
+                setLoading(false);
+            }
+        }
+
+        document.getElementById('favorites-items').addEventListener('click', async (event) => {
+            const btn = event.target.closest('[data-favorite-id]');
+            if (!btn) return;
+
+            try {
+                await Avdrom.apiFetch(`/api/favorites/${btn.dataset.favoriteId}`, { method: 'DELETE' });
+                loadFavorites();
+            } catch (err) {
+                Avdrom.showError('favorites-error', Avdrom.normalizeErrorMessage(err));
+            }
+        });
+
+        (async () => {
+            await Avdrom.initAuth();
+            await loadPageContent();
+            await loadFavorites();
+        })();
+    </script>
+</body>
+</html>
