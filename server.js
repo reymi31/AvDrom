@@ -16,6 +16,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(__dirname));
 
+
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
@@ -67,6 +68,7 @@ async function ensureUsersTable() {
         email VARCHAR(255) NOT NULL UNIQUE,
         passwordHash VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
+        phone VARCHAR(30) NULL,
         role VARCHAR(20) NOT NULL DEFAULT 'user',
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -93,6 +95,7 @@ async function ensureUsersTable() {
         email VARCHAR(255) NOT NULL UNIQUE,
         passwordHash VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
+        phone VARCHAR(30) NULL,
         role VARCHAR(20) NOT NULL DEFAULT 'user',
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -102,6 +105,9 @@ async function ensureUsersTable() {
 
   if (!columnNames.includes('role')) {
     await runQuery("ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user' AFTER name");
+  }
+  if (!columnNames.includes('phone')) {
+    await runQuery("ALTER TABLE users ADD COLUMN phone VARCHAR(30) NULL AFTER name");
   }
 }
 
@@ -143,6 +149,12 @@ async function ensureItemsTable() {
   }
   if (!columnNames.includes('isVip')) {
     await runQuery('ALTER TABLE items ADD COLUMN isVip TINYINT(1) NOT NULL DEFAULT 0 AFTER imageData');
+  }
+  if (!columnNames.includes('city')) {
+    await runQuery('ALTER TABLE items ADD COLUMN city VARCHAR(100) NULL AFTER title');
+  }
+  if (!columnNames.includes('sharePhone')) {
+    await runQuery('ALTER TABLE items ADD COLUMN sharePhone TINYINT(1) NOT NULL DEFAULT 1 AFTER isVip');
   }
 }
 
@@ -214,7 +226,7 @@ function getCurrentUser(req) {
 }
 
 async function loadUserById(userId) {
-  const users = await runQuery('SELECT id, email, name, role, createdAt FROM users WHERE id = ?', [userId]);
+  const users = await runQuery('SELECT id, email, name, role, phone, createdAt FROM users WHERE id = ?', [userId]);
   return users[0] || null;
 }
 
@@ -268,6 +280,23 @@ function requireAdmin(req, res, next) {
 }
 
 function normalizeItem(item) {
+  let images = [];
+
+  if (item.imageData) {
+    if (typeof item.imageData === 'string') {
+      try {
+        const parsed = JSON.parse(item.imageData);
+        if (Array.isArray(parsed)) {
+          images = parsed.filter((src) => Boolean(src));
+        } else if (parsed) {
+          images = [String(parsed)];
+        }
+      } catch {
+        images = [item.imageData];
+      }
+    }
+  }
+
   return {
     id: item.id,
     title: item.title,
@@ -276,10 +305,14 @@ function normalizeItem(item) {
     price: Number(item.price),
     year: item.year,
     description: item.description,
-    imageData: item.imageData,
+    imageData: images[0] || null,
+    images,
     isVip: Boolean(item.isVip),
     ownerId: item.ownerId,
     ownerName: item.ownerName,
+    ownerPhone: item.ownerPhone || null,
+    city: item.city || null,
+    sharePhone: Boolean(item.sharePhone),
     createdAt: item.createdAt,
     isFavorite: Boolean(item.isFavorite),
     isOwner: Boolean(item.isOwner),
@@ -302,8 +335,37 @@ app.get('/profile', requireAuthPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'profile.html'));
 });
 
+app.get('/cars', (req, res) => {
+  res.sendFile(path.join(__dirname, 'cars.html'));
+});
+
+app.get('/cars/:id', (req, res) => {
+  res.sendFile(path.join(__dirname, 'car.html'));
+});
+
+app.get('/favorites', requireAuthPage, (req, res) => {
+  res.sendFile(path.join(__dirname, 'favorites.html'));
+});
+
+app.get('/about', (req, res) => {
+  res.sendFile(path.join(__dirname, 'about.html'));
+});
+
+app.get('/help', (req, res) => {
+  res.sendFile(path.join(__dirname, 'help.html'));
+});
+
+app.get('/admin', requireAuthPage, (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+app.get('/search', (req, res) => {
+  res.sendFile(path.join(__dirname, 'search.html'));
+});
+
 app.post('/api/auth/register', async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, phone } = req.body;
+  const phoneValue = phone ? String(phone).trim() : null;
 
   if (!name || !email || !password) {
     return res.status(400).send('Все поля обязательны');
@@ -311,13 +373,17 @@ app.post('/api/auth/register', async (req, res) => {
   if (name.trim().length < 2) {
     return res.status(400).send('Имя должно содержать минимум 2 символа');
   }
-  if (password.length < 6) {
-    return res.status(400).send('Пароль должен быть не короче 6 символов');
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%\^&\*])(?=.{8,})/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).send('Пароль должен содержать минимум 8 символов, включая заглавную букву, цифру и специальный символ');
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     return res.status(400).send('Некорректный email');
+  }
+  if (phoneValue && phoneValue.length < 6) {
+    return res.status(400).send('Телефон должен содержать не менее 6 символов');
   }
 
   try {
@@ -328,8 +394,8 @@ app.post('/api/auth/register', async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const result = await runQuery(
-      "INSERT INTO users (email, passwordHash, name, role) VALUES (?, ?, ?, 'user')",
-      [email, passwordHash, name.trim()]
+      "INSERT INTO users (email, passwordHash, name, phone, role) VALUES (?, ?, ?, ?, 'user')",
+      [email, passwordHash, name.trim(), phoneValue]
     );
 
     setSession(res, result.insertId);
@@ -505,6 +571,7 @@ app.get('/api/items', async (req, res) => {
           items.ownerId,
           items.createdAt,
           users.name AS ownerName,
+          users.phone AS ownerPhone,
           CASE WHEN favorites.id IS NULL THEN 0 ELSE 1 END AS isFavorite,
           CASE WHEN items.ownerId = ? THEN 1 ELSE 0 END AS isOwner
         FROM items
@@ -525,8 +592,63 @@ app.get('/api/items', async (req, res) => {
   }
 });
 
+app.get('/api/items/:id', async (req, res) => {
+  const itemId = Number(req.params.id);
+  if (!Number.isInteger(itemId)) {
+    return res.status(400).json({ message: 'Некорректный идентификатор объявления' });
+  }
+
+  try {
+    const results = await runQuery(
+      `
+        SELECT
+          items.id,
+          items.title,
+          items.brand,
+          items.model,
+          items.price,
+          items.year,
+          items.description,
+          items.imageData,
+          items.isVip,
+          items.ownerId,
+          items.createdAt,
+          users.name AS ownerName,
+          users.phone AS ownerPhone,
+          CASE WHEN items.ownerId = ? THEN 1 ELSE 0 END AS isOwner
+        FROM items
+        JOIN users ON users.id = items.ownerId
+        WHERE items.id = ?
+      `,
+      [getCurrentUser(req) || 0, itemId]
+    );
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Объявление не найдено' });
+    }
+
+    res.json(normalizeItem(results[0]));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.sqlMessage || error.message });
+  }
+});
+
 app.post('/api/items', requireAuthApi, async (req, res) => {
-  const { title, brand, model, price, year, description, imageData, isVip } = req.body;
+  const { title, brand, model, price, year, description, imageData, isVip, city, sharePhone } = req.body;
+
+  let images = [];
+  if (imageData) {
+    if (Array.isArray(imageData)) {
+      images = imageData;
+    } else if (typeof imageData === 'string') {
+      images = [imageData];
+    }
+  }
+
+  if (images.some((src) => !String(src).startsWith('data:image/'))) {
+    return res.status(400).json({ message: 'Все изображения должны быть загружены в виде файлов изображений' });
+  }
 
   if (!title || title.trim().length < 2) {
     return res.status(400).json({ message: 'Название должно содержать минимум 2 символа' });
@@ -552,24 +674,29 @@ app.post('/api/items', requireAuthApi, async (req, res) => {
   }
 
   const vipValue = isVip ? 1 : 0;
+  const sharePhoneValue = sharePhone !== false ? 1 : 0;
+  const storedImageData = images.length ? JSON.stringify(images) : null;
 
   try {
     const result = await runQuery(
-      `INSERT INTO items (title, brand, model, price, year, description, imageData, isVip, ownerId)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title.trim(), brand.trim(), model.trim(), numericPrice, numericYear, description || '', imageData || null, vipValue, req.userId]
+      `INSERT INTO items (title, city, brand, model, price, year, description, imageData, isVip, sharePhone, ownerId)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [title.trim(), city || null, brand.trim(), model.trim(), numericPrice, numericYear, description || '', storedImageData, vipValue, sharePhoneValue, req.userId]
     );
 
     res.status(201).json({
       id: result.insertId,
       title: title.trim(),
+      city: city || null,
       brand: brand.trim(),
       model: model.trim(),
       price: numericPrice,
       year: numericYear,
       description: description || '',
-      imageData: imageData || null,
+      imageData: images[0] || null,
+      images,
       isVip: Boolean(vipValue),
+      sharePhone: Boolean(sharePhoneValue),
       ownerId: req.userId,
     });
   } catch (error) {
@@ -674,6 +801,12 @@ app.delete('/api/favorites/:itemId', requireAuthApi, async (req, res) => {
     console.error(error);
     res.status(500).json({ message: error.sqlMessage || error.message });
   }
+});
+
+// Catch-all 404 handler — вернуть пользовательскую страницу 404
+// Catch-all 404 handler — вернуть пользовательскую страницу 404
+app.use((req, res) => {
+  res.status(404).sendFile(path.join(__dirname, '404.html'));
 });
 
 app.listen(port, () => {
