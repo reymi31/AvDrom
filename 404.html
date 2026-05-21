@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Страница не найдена</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>AvDrom</h1>
+    <nav id="main-nav">
+      <a href="/">Главная</a>
+      <a href="/cars">Каталог</a>
+      <a href="/about">О нас</a>
+      <a href="/help">Помощь</a>
+      <a href="/favorites" data-private class="hidden">Избранное</a>
+      <a href="/profile" data-private class="hidden">Профиль</a>
+      <span id="user-chip" class="user-chip hidden"></span>
+      <a href="/auth/login" id="auth-link">Войти</a>
+    </nav>
+  </header>
+
+  <section class="hero profile-hero">
+    <h2>404 — Страница не найдена</h2>
+  </section>
+
+  <main class="home-layout">
+    <section class="profile-panel" style="max-width: 900px; text-align: center;">
+      <div style="padding: 40px; background: white; border-radius: 16px; box-shadow: 0 12px 30px rgba(18,24,38,0.06);">
+        <div class="action-row" style="display:flex; justify-content:center; gap:12px; align-items:center;">
+          <a class="primary-button" href="/">На главную</a>
+          <a class="secondary-button" href="/cars">Каталог</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 AvDrom. Все права защищены.</p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
