@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Вход</title>
     <link rel="stylesheet" href="/login.css">
 </head>
@@ -15,9 +16,39 @@
         <input type="password" name="password" placeholder="Пароль" required>
 
         <button type="submit">Войти</button>
-
+        <div id="login-error" style="color:#d9534f; margin-top: 12px; display:none; text-align:left; font-size:0.95rem;"></div>
         <p>Нет аккаунта? <a href="/auth/register">Регистрация</a></p>
     </form>
 </div>
+<script>
+    document.querySelector('.login-form').addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const form = event.target;
+        const errorBox = document.getElementById('login-error');
+        errorBox.style.display = 'none';
+        errorBox.textContent = '';
+
+        const formData = new FormData(form);
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: new URLSearchParams(formData),
+            credentials: 'same-origin'
+        });
+
+        if (response.redirected) {
+            window.location.href = response.url;
+            return;
+        }
+
+        if (!response.ok) {
+            const message = await response.text();
+            errorBox.textContent = message || 'Ошибка входа';
+            errorBox.style.display = 'block';
+            return;
+        }
+
+        window.location.href = '/profile';
+    });
+</script>
 </body>
 </html>
