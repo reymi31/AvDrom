@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Помощь</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <h1>AvDrom</h1>
+        <nav id="main-nav">
+            <a href="/">Главная</a>
+            <a href="/cars">Каталог</a>
+            <a href="/about">О нас</a>
+            <a href="/help">Помощь</a>
+            <a href="/favorites" data-private class="hidden">Избранное</a>
+            <a href="/profile" data-private class="hidden">Профиль</a>
+            <span id="user-chip" class="user-chip hidden"></span>
+            <a href="/auth/login" id="auth-link">Войти</a>
+        </nav>
+    </header>
+
+    <section class="hero profile-hero">
+        <h2>Техподдержка AvDrom</h2>
+    </section>
+
+    <main class="about">
+        <div class="help-panel">
+            <p>Напишите письмо на <a href="mail.ru:support@mail.ru">support@mail.ru</a> или позвоните по номеру <a href="tel:+375331234567">+375 (33) 123-45-67</a>.</p>
+            <form id="help-form" class="profile-form">
+                <input type="email" id="help-email" placeholder="Ваш Email" required>   
+                <textarea id="help-message" placeholder="Сообщение для техподдержки" required></textarea>
+                <button type="submit" class="primary-button">Отправить обращение</button>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2026 AvDrom. Все права защищены.</p>
+    </footer>
+
+    <script src="/app.js"></script>
+    <script>
+        document.getElementById('help-form').addEventListener('submit', (event) => {
+            event.preventDefault();
+            const email = document.getElementById('help-email').value.trim();
+            const message = document.getElementById('help-message').value.trim();
+
+            if (!email || !message) {
+                alert('Пожалуйста, укажите email и текст обращения.');
+                return;
+            }
+
+            window.location.href = `mailto:support@mail.ru?subject=${encodeURIComponent('Запрос в техподдержку')}&body=${encodeURIComponent(`Email: ${email}\n\n${message}`)}`;
+        });
+
+        Avdrom.initAuth();
+    </script>
+</body>
+</html>
