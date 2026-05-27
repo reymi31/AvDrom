@@ -80,6 +80,11 @@
     if (userChip) {
       userChip.textContent = isAuthed ? state.user.name : '';
       userChip.classList.toggle('hidden', !isAuthed);
+      if (isAuthed && state.user && state.user.role === 'admin') {
+        userChip.classList.add('admin-chip');
+      } else {
+        userChip.classList.remove('admin-chip');
+      }
     }
 
     if (authLink) {
