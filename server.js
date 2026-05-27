@@ -12,8 +12,44 @@ const ADMIN_EMAIL = 'admin@avdrom.local';
 const ADMIN_PASSWORD = 'Admin12345';
 const ADMIN_NAME = 'Администратор';
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// базовый справочник (пополняется автоматически из объявлений в БД)
+const DEFAULT_BRANDS_MODELS = {
+  Audi: ['A3', 'A4', 'A6', 'Q5', 'Q7'],
+  BMW: ['3 Series', '5 Series', 'X3', 'X5', 'X6'],
+  'Mercedes-Benz': ['C-Class', 'E-Class', 'GLA', 'GLC', 'GLE'],
+  Volkswagen: ['Golf', 'Passat', 'Polo', 'Tiguan', 'Touareg'],
+  Toyota: ['Camry', 'Corolla', 'RAV4', 'Land Cruiser', 'Prius'],
+  Honda: ['Civic', 'Accord', 'CR-V'],
+  Nissan: ['Qashqai', 'X-Trail', 'Juke'],
+  Hyundai: ['Elantra', 'Solaris', 'Tucson', 'Santa Fe'],
+  Kia: ['Rio', 'Ceed', 'Sportage', 'Sorento'],
+  Skoda: ['Octavia', 'Rapid', 'Kodiaq', 'Superb'],
+  Renault: ['Logan', 'Duster', 'Sandero'],
+  Ford: ['Focus', 'Mondeo', 'Kuga'],
+  Mazda: ['Mazda 3', 'Mazda 6', 'CX-5'],
+  LADA: ['Granta', 'Vesta', 'Niva'],
+};
+
+// Multiple photos are sent as base64 data URLs, so we keep a higher body limit.
+app.use(express.json({ limit: '30mb' }));
+app.use(express.urlencoded({ extended: true, limit: '30mb' }));
+
+// Prevent bypassing auth by requesting html files directly (e.g. /profile.html).
+app.use((req, res, next) => {
+  if (req.method !== 'GET') return next();
+  if (!String(req.path || '').toLowerCase().endsWith('.html')) return next();
+
+  const cookieHeader = req.headers.cookie || '';
+  const match = cookieHeader.match(/(?:^|;\s*)sessionId=([^;]+)/);
+  const sessionId = match ? decodeURIComponent(match[1]) : null;
+
+  if (!sessionId || !sessions.has(sessionId)) {
+    return res.redirect('/auth/login');
+  }
+
+  next();
+});
+
 app.use(express.static(__dirname));
 
 
@@ -319,15 +355,18 @@ function normalizeItem(item) {
   };
 }
 
-app.get('/', (req, res) => {
+// Site is private: require login for all pages except /auth/*
+app.get('/', requireAuthPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/auth/login', (req, res) => {
+  if (getCurrentUser(req)) return res.redirect('/profile');
   res.sendFile(path.join(__dirname, 'login.html'));
 });
 
 app.get('/auth/register', (req, res) => {
+  if (getCurrentUser(req)) return res.redirect('/profile');
   res.sendFile(path.join(__dirname, 'register.html'));
 });
 
@@ -335,11 +374,11 @@ app.get('/profile', requireAuthPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'profile.html'));
 });
 
-app.get('/cars', (req, res) => {
+app.get('/cars', requireAuthPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'cars.html'));
 });
 
-app.get('/cars/:id', (req, res) => {
+app.get('/cars/:id', requireAuthPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'car.html'));
 });
 
@@ -347,19 +386,22 @@ app.get('/favorites', requireAuthPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'favorites.html'));
 });
 
-app.get('/about', (req, res) => {
+app.get('/about', requireAuthPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'about.html'));
 });
 
-app.get('/help', (req, res) => {
+app.get('/help', requireAuthPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'help.html'));
 });
 
 app.get('/admin', requireAuthPage, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.redirect('/profile');
+  }
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
-app.get('/search', (req, res) => {
+app.get('/search', requireAuthPage, (req, res) => {
   res.sendFile(path.join(__dirname, 'search.html'));
 });
 
@@ -457,6 +499,60 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
+app.get('/api/meta/brands-models', requireAuthApi, async (req, res) => {
+  try {
+    const rows = await runQuery(
+      `
+        SELECT brand, model
+        FROM items
+        WHERE brand IS NOT NULL AND brand <> '' AND model IS NOT NULL AND model <> ''
+        GROUP BY brand, model
+        ORDER BY brand ASC, model ASC
+      `
+    );
+
+    const map = new Map();
+    const ensure = (brand) => {
+      const clean = String(brand || '').trim();
+      if (!clean) return null;
+      const key = clean.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, { brand: clean, models: new Set() });
+      }
+      return map.get(key);
+    };
+
+    Object.entries(DEFAULT_BRANDS_MODELS).forEach(([brand, models]) => {
+      const entry = ensure(brand);
+      if (!entry) return;
+      (models || []).forEach((model) => entry.models.add(String(model)));
+    });
+
+    (rows || []).forEach((row) => {
+      const entry = ensure(row.brand);
+      if (!entry) return;
+      const model = String(row.model || '').trim();
+      if (model) entry.models.add(model);
+    });
+
+    const brands = Array.from(map.values())
+      .map((entry) => entry.brand)
+      .sort((a, b) => a.localeCompare(b, 'ru', { sensitivity: 'base' }));
+
+    const modelsByBrand = {};
+    Array.from(map.values()).forEach((entry) => {
+      modelsByBrand[entry.brand] = Array.from(entry.models).sort((a, b) =>
+        a.localeCompare(b, 'ru', { sensitivity: 'base' })
+      );
+    });
+
+    res.json({ brands, modelsByBrand });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.sqlMessage || error.message });
+  }
+});
+
 app.get('/api/users', requireAuthApi, requireAdmin, async (req, res) => {
   try {
     const users = await runQuery('SELECT id, email, name, role, createdAt FROM users ORDER BY createdAt DESC');
@@ -519,32 +615,64 @@ app.delete('/api/users/:id', requireAuthApi, requireAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/items', async (req, res) => {
-  const currentUserId = getCurrentUser(req) || 0;
-  const { brand = '', model = '', minPrice = '', maxPrice = '', year = '', favoritesOnly = 'false', vipOnly = 'false' } = req.query;
+app.get('/api/items', requireAuthApi, async (req, res) => {
+  const currentUserId = req.userId;
+  const {
+    q = '',
+    brand = '',
+    model = '',
+    minPrice = '',
+    maxPrice = '',
+    year = '',
+    favoritesOnly = 'false',
+    vipOnly = 'false',
+    sort = 'date_desc',
+    limit = '12',
+    offset = '0',
+  } = req.query;
 
   const conditions = [];
   const params = [currentUserId, currentUserId];
 
-  if (brand) {
+  const search = String(q || '').trim();
+  if (search) {
+    conditions.push('(items.title LIKE ? OR items.brand LIKE ? OR items.model LIKE ? OR items.description LIKE ? OR items.city LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+  }
+
+  const brandValue = String(brand || '').trim();
+  if (brandValue) {
     conditions.push('items.brand LIKE ?');
-    params.push(`%${brand}%`);
+    params.push(`%${brandValue}%`);
   }
-  if (model) {
+
+  const modelValue = String(model || '').trim();
+  if (modelValue) {
     conditions.push('items.model LIKE ?');
-    params.push(`%${model}%`);
+    params.push(`%${modelValue}%`);
   }
-  if (minPrice) {
-    conditions.push('items.price >= ?');
-    params.push(Number(minPrice));
+  if (minPrice !== '') {
+    const min = Number(minPrice);
+    if (Number.isFinite(min)) {
+      conditions.push('items.price >= ?');
+      params.push(min);
+    }
   }
-  if (maxPrice) {
-    conditions.push('items.price <= ?');
-    params.push(Number(maxPrice));
+
+  if (maxPrice !== '') {
+    const max = Number(maxPrice);
+    if (Number.isFinite(max)) {
+      conditions.push('items.price <= ?');
+      params.push(max);
+    }
   }
-  if (year) {
-    conditions.push('items.year = ?');
-    params.push(Number(year));
+
+  if (year !== '') {
+    const yearValue = Number.parseInt(String(year), 10);
+    if (Number.isInteger(yearValue)) {
+      conditions.push('items.year = ?');
+      params.push(yearValue);
+    }
   }
   if (favoritesOnly === 'true') {
     conditions.push('favorites.id IS NOT NULL');
@@ -555,12 +683,27 @@ app.get('/api/items', async (req, res) => {
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+  const sortKey = String(sort || '').trim();
+  const sortMap = {
+    date_desc: 'items.createdAt DESC',
+    date_asc: 'items.createdAt ASC',
+    price_desc: 'items.price DESC',
+    price_asc: 'items.price ASC',
+    title_asc: 'items.title ASC',
+    title_desc: 'items.title DESC',
+  };
+  const orderBy = sortMap[sortKey] || sortMap.date_desc;
+
+  const parsedLimit = Math.max(1, Math.min(24, Number.parseInt(String(limit), 10) || 12));
+  const parsedOffset = Math.max(0, Number.parseInt(String(offset), 10) || 0);
+
   try {
     const results = await runQuery(
       `
         SELECT
           items.id,
           items.title,
+          items.city,
           items.brand,
           items.model,
           items.price,
@@ -568,6 +711,7 @@ app.get('/api/items', async (req, res) => {
           items.description,
           items.imageData,
           items.isVip,
+          items.sharePhone,
           items.ownerId,
           items.createdAt,
           users.name AS ownerName,
@@ -580,9 +724,11 @@ app.get('/api/items', async (req, res) => {
           ON favorites.itemId = items.id
          AND favorites.userId = ?
         ${whereClause}
-        ORDER BY items.isVip DESC, items.createdAt DESC
+        ORDER BY items.isVip DESC, ${orderBy}
+        LIMIT ?
+        OFFSET ?
       `,
-      params
+      [...params, parsedLimit, parsedOffset]
     );
 
     res.json(results.map(normalizeItem));
@@ -592,18 +738,20 @@ app.get('/api/items', async (req, res) => {
   }
 });
 
-app.get('/api/items/:id', async (req, res) => {
+app.get('/api/items/:id', requireAuthApi, async (req, res) => {
   const itemId = Number(req.params.id);
   if (!Number.isInteger(itemId)) {
     return res.status(400).json({ message: 'Некорректный идентификатор объявления' });
   }
 
   try {
+    const currentUserId = req.userId;
     const results = await runQuery(
       `
         SELECT
           items.id,
           items.title,
+          items.city,
           items.brand,
           items.model,
           items.price,
@@ -611,16 +759,22 @@ app.get('/api/items/:id', async (req, res) => {
           items.description,
           items.imageData,
           items.isVip,
+          items.sharePhone,
           items.ownerId,
           items.createdAt,
           users.name AS ownerName,
           users.phone AS ownerPhone,
+          CASE WHEN favorites.id IS NULL THEN 0 ELSE 1 END AS isFavorite,
           CASE WHEN items.ownerId = ? THEN 1 ELSE 0 END AS isOwner
         FROM items
         JOIN users ON users.id = items.ownerId
+        LEFT JOIN favorites
+          ON favorites.itemId = items.id
+         AND favorites.userId = ?
         WHERE items.id = ?
+        LIMIT 1
       `,
-      [getCurrentUser(req) || 0, itemId]
+      [currentUserId, currentUserId, itemId]
     );
 
     if (results.length === 0) {
@@ -646,6 +800,12 @@ app.post('/api/items', requireAuthApi, async (req, res) => {
     }
   }
 
+  images = images.filter((src) => typeof src === 'string' && src.trim().length > 0);
+  const MAX_IMAGES = 8;
+  if (images.length > MAX_IMAGES) {
+    return res.status(400).json({ message: `Можно загрузить не более ${MAX_IMAGES} фотографий` });
+  }
+
   if (images.some((src) => !String(src).startsWith('data:image/'))) {
     return res.status(400).json({ message: 'Все изображения должны быть загружены в виде файлов изображений' });
   }
@@ -669,7 +829,7 @@ app.post('/api/items', requireAuthApi, async (req, res) => {
   if (numericYear && (!Number.isInteger(numericYear) || numericYear < 1950 || numericYear > 2035)) {
     return res.status(400).json({ message: 'Год указан некорректно' });
   }
-  if (imageData && !String(imageData).startsWith('data:image/')) {
+  if (typeof imageData === 'string' && imageData && !String(imageData).startsWith('data:image/')) {
     return res.status(400).json({ message: 'Фотография должна быть изображением' });
   }
 
